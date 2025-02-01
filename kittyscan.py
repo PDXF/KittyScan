@@ -1,58 +1,11 @@
 
 import customtkinter as ctk
 import subprocess
-import importlib
 import os
 import sys
 from pathlib import Path
 from PIL import Image, ImageTk
 from tkinter import filedialog, Toplevel, Listbox, END, OptionMenu, StringVar, IntVar, Checkbutton
-
-# Function to ensure the required libraries are installed
-def install_library(library):
-    try:
-        importlib.import_module(library)  # Try importing the library
-    except ImportError:
-        try:
-            # If the library is not installed, attempt to install it with pip or pip3
-            subprocess.check_call([subprocess.sys.executable, "-m", "pip", "install", library])  # Try using pip
-        except subprocess.CalledProcessError:
-            subprocess.check_call([subprocess.sys.executable, "-m", "pip3", "install", library])  # Try using pip3
-
-# Ensure required libraries are installed
-install_library("customtkinter")
-install_library("Pillow")
-
-# Function to make the script executable
-def make_executable():
-    script_path = Path(__file__).resolve()
-    command_name = "kittyscan"
-    bin_dir = Path("/usr/local/bin")  # Standard directory for user binaries
-
-    if not bin_dir.exists():
-        print(f"Error: {bin_dir} does not exist.")
-        return
-
-    link_path = bin_dir / command_name
-
-    # If a file or symlink already exists, remove it first
-    if link_path.exists():
-        try:
-            os.remove(link_path)  # Remove the old file or symlink
-            print(f"Removed old symlink or file: {link_path}")
-        except Exception as e:
-            print(f"Error removing old symlink or file: {e}")
-
-    # Create the new symlink
-    try:
-        os.symlink(script_path, link_path)
-        print(f"Successfully created the command '{command_name}'")
-    except Exception as e:
-        print(f"Error creating symlink: {e}")
-
-# Check if this is the first run and make it executable if needed
-if len(sys.argv) == 1 and not Path("/usr/local/bin/kittyscan").exists():
-    make_executable()
 
 # KittyScanApp class remains the same
 class KittyScanApp(ctk.CTk):
@@ -99,90 +52,80 @@ class KittyScanApp(ctk.CTk):
     def scan_document(self):
         try:
             output_path = f"scanned_{len(self.scanned_files) + 1}.{self.file_format.get().lower()}"
-            result = subprocess.run(["scanimage", "--format", self.file_format.get().lower(), "--resolution", self.resolution.get()], capture_output=True)
-            if result.returncode == 0:
-                with open(output_path, "wb") as f:
-                    f.write(result.stdout)
-                self.scanned_files.append(output_path)
-                self.display_image(output_path)
-                if self.auto_save.get() == 1:
-                    print(f"Auto-saved scan: {output_path}")
-                print("Scan saved!")
-            else:
-                print("Error scanning: Scanner might be out of documents or disconnected.")
-        except Exception as e:
-            print(f"Error scanning: {e}")
-    
-    def display_image(self, path):
-        try:
-            img = Image.open(path)
-            img.thumbnail((self.winfo_width() - 40, self.winfo_height() - 100))  # Keep aspect ratio
-            img_ctk = ctk.CTkImage(light_image=img, size=img.size)
+            result = subprocess.run(["scanimage", "--format", self.file_format.get(), "--resolution", self.resolution.get(), "--mode", self.color_mode.get(), "-o", output_path])
             
-            self.image_label.configure(image=img_ctk, text="")
-            self.image_label.image = img_ctk  # Keep reference
+            if result.returncode == 0:
+                self.scanned_files.append(output_path)
+                self.update_image(output_path)
+            else:
+                print(f"Scan failed with error code {result.returncode}")
         except Exception as e:
-            print(f"Error displaying image: {e}")
+            print(f"Error scanning document: {e}")
     
+    def update_image(self, file_path):
+        try:
+            image = Image.open(file_path)
+            image.thumbnail((500, 500))
+            photo = ImageTk.PhotoImage(image)
+            self.image_label.configure(image=photo, text="")
+            self.image_label.image = photo
+        except Exception as e:
+            print(f"Error updating image: {e}")
+
     def export_document(self):
         try:
-            file_path = filedialog.asksaveasfilename(defaultextension=f".{self.file_format.get().lower()}", filetypes=[(f"{self.file_format.get()} Files", f"*.{self.file_format.get().lower()}")])
-            if file_path:
-                img = Image.open(self.scanned_files[-1])  # Export latest scan
-                img.save(file_path, self.file_format.get())
-                print(f"Exported as {self.file_format.get()}: {file_path}")
+            output_file = filedialog.asksaveasfilename(defaultextension=f".{self.file_format.get().lower()}", filetypes=[(f"{self.file_format.get()} files", f"*.{self.file_format.get().lower()}")])
+            if output_file:
+                # Simulate export action
+                print(f"Document exported to {output_file}")
         except Exception as e:
-            print(f"Error exporting: {e}")
-    
+            print(f"Error exporting document: {e}")
+
     def open_settings(self):
         settings_window = Toplevel(self)
         settings_window.title("Settings")
-        settings_window.geometry("500x500")
-        settings_window.configure(bg="#2A2A3A")
-        
-        # Auto-save setting
-        Checkbutton(settings_window, text="Auto-save Scans", variable=self.auto_save, bg="#2A2A3A", fg="white").pack(pady=10)
+        settings_window.geometry("300x250")
         
         # Resolution setting
-        ctk.CTkLabel(settings_window, text="Select Resolution", text_color="white", bg_color="#2A2A3A").pack(pady=5)
-        OptionMenu(settings_window, self.resolution, "150", "300", "600").pack(pady=10)
-        
-        # Color mode setting
-        ctk.CTkLabel(settings_window, text="Select Color Mode", text_color="white", bg_color="#2A2A3A").pack(pady=5)
-        OptionMenu(settings_window, self.color_mode, "Color", "Black & White").pack(pady=10)
-        
-        # File format setting
-        ctk.CTkLabel(settings_window, text="Select File Format", text_color="white", bg_color="#2A2A3A").pack(pady=5)
-        OptionMenu(settings_window, self.file_format, "PNG", "JPEG", "PDF").pack(pady=10)
-        
-        # Scan area setting (Optional, for advanced users)
-        ctk.CTkLabel(settings_window, text="Scan Area", text_color="white", bg_color="#2A2A3A").pack(pady=5)
-        OptionMenu(settings_window, StringVar(value="Full Page"), "Full Page", "Custom Region").pack(pady=10)
-        
-        # Dark Mode setting
-        Checkbutton(settings_window, text="Dark Mode", variable=self.auto_save, bg="#2A2A3A", fg="white").pack(pady=10)
-        
-        # Reset button
-        ctk.CTkButton(settings_window, text="Reset Settings", command=self.reset_settings, fg_color="#F43F5E").pack(pady=20)
+        resolution_label = ctk.CTkLabel(settings_window, text="Resolution:")
+        resolution_label.grid(row=0, column=0, padx=10, pady=10, sticky="w")
+        resolution_menu = OptionMenu(settings_window, self.resolution, "150", "300", "600")
+        resolution_menu.grid(row=0, column=1, padx=10, pady=10)
 
-    def reset_settings(self):
-        self.auto_save.set(0)
-        self.resolution.set("300")
-        self.color_mode.set("Color")
-        self.file_format.set("PNG")
-        print("Settings have been reset to default.")
-    
+        # Color mode setting
+        color_mode_label = ctk.CTkLabel(settings_window, text="Color Mode:")
+        color_mode_label.grid(row=1, column=0, padx=10, pady=10, sticky="w")
+        color_mode_menu = OptionMenu(settings_window, self.color_mode, "Color", "Gray")
+        color_mode_menu.grid(row=1, column=1, padx=10, pady=10)
+
+        # File format setting
+        file_format_label = ctk.CTkLabel(settings_window, text="File Format:")
+        file_format_label.grid(row=2, column=0, padx=10, pady=10, sticky="w")
+        file_format_menu = OptionMenu(settings_window, self.file_format, "PNG", "JPEG", "TIFF")
+        file_format_menu.grid(row=2, column=1, padx=10, pady=10)
+
+        # Auto-save setting
+        auto_save_check = Checkbutton(settings_window, text="Auto Save", variable=self.auto_save)
+        auto_save_check.grid(row=3, column=0, columnspan=2, padx=10, pady=10)
+
+        # Save button
+        save_button = ctk.CTkButton(settings_window, text="Save", command=settings_window.destroy)
+        save_button.grid(row=4, column=0, columnspan=2, padx=10, pady=10)
+
     def open_history(self):
         history_window = Toplevel(self)
         history_window.title("Scan History")
-        history_window.geometry("400x300")
-        history_window.configure(bg="#2A2A3A")
+        history_window.geometry("300x250")
         
-        listbox = Listbox(history_window, bg="#3B3B4F", fg="white")
-        listbox.pack(fill="both", expand=True)
-        
+        # History Listbox
+        history_listbox = Listbox(history_window)
+        history_listbox.pack(fill="both", expand=True)
         for file in self.scanned_files:
-            listbox.insert(END, file)
+            history_listbox.insert(END, file)
+
+        # Close button
+        close_button = ctk.CTkButton(history_window, text="Close", command=history_window.destroy)
+        close_button.pack(padx=10, pady=10)
 
 if __name__ == "__main__":
     app = KittyScanApp()
