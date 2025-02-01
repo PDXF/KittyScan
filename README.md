@@ -112,9 +112,4 @@ Feel free to contribute by opening issues or submitting pull requests. Contribut
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-### Key Changes:
-1. **Installation Instructions**: Added steps to clone the GitHub repo, make `KittyScan.py` executable, and link it to a command `kittyscan` globally.
-2. **Run the App via Terminal**: The app can now be launched with `kittyscan` from the terminal after setting it up.
-3. **macOS Focus**: Adjusted for macOS usage with VueScan or SANE as potential scanning solutions.
-
-This should give users clear guidance on how to get the app up and running on their system. Let me know if you need any more tweaks!
+tyyy
