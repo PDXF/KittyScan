@@ -120,13 +120,13 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ### Summary of Key Steps:
 1. **Clone the repo**: 
    ```bash
-   git clone https://github.com/your-username/KittyScan.git
+   git clone https://github.com/PDXF/KittyScan.git
    ```
 
 2. **Install dependencies**: 
    ```bash
    cd KittyScan
-   pip install customtkinter pillow
+   pip3 install customtkinter pillow
    ```
 
 3. **Make the script executable**: 
