@@ -1,8 +1,61 @@
+#!/usr/bin/env python3
+
 import customtkinter as ctk
 import subprocess
+import importlib
+import os
+import sys
+from pathlib import Path
 from PIL import Image, ImageTk
 from tkinter import filedialog, Toplevel, Listbox, END, OptionMenu, StringVar, IntVar, Checkbutton
 
+# Function to ensure the required libraries are installed
+def install_library(library):
+    try:
+        importlib.import_module(library)  # Try importing the library
+    except ImportError:
+        try:
+            # If the library is not installed, attempt to install it with pip or pip3
+            subprocess.check_call([subprocess.sys.executable, "-m", "pip", "install", library])  # Try using pip
+        except subprocess.CalledProcessError:
+            subprocess.check_call([subprocess.sys.executable, "-m", "pip3", "install", library])  # Try using pip3
+
+# Ensure required libraries are installed
+install_library("customtkinter")
+install_library("Pillow")
+
+# Function to make the script executable
+def make_executable():
+    script_path = Path(__file__).resolve()
+    command_name = "kittyscan"
+    bin_dir = Path("/usr/local/bin")  # Standard directory for user binaries
+
+    if not bin_dir.exists():
+        print(f"Error: {bin_dir} does not exist.")
+        return
+
+    link_path = bin_dir / command_name
+
+    # If a file or symlink already exists, remove it first
+    if link_path.exists():
+        try:
+            os.remove(link_path)  # Remove the old file or symlink
+            print(f"Removed old symlink or file: {link_path}")
+        except Exception as e:
+            print(f"Error removing old symlink or file: {e}")
+
+    # Create the new symlink
+    try:
+        os.symlink(script_path, link_path)
+        print(f"Successfully created the command '{command_name}'")
+    except Exception as e:
+        print(f"Error creating symlink: {e}")
+
+# Check if this is the first run and make it executable if needed
+if len(sys.argv) == 1 and not Path("/usr/local/bin/kittyscan").exists():
+    make_executable()
+
+# KittyScanApp class remains the same
 class KittyScanApp(ctk.CTk):
     def __init__(self):
         super().__init__()
